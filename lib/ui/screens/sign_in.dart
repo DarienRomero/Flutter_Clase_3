@@ -1,42 +1,27 @@
-import 'package:clase3/sign_up.dart';
+import 'package:clase3/bloc/bloc_user.dart';
+import 'package:clase3/ui/screens/sign_up.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:generic_bloc_provider/generic_bloc_provider.dart';
 
 import 'home.dart';
 
 final FirebaseAuth _auth = FirebaseAuth.instance;
-final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-class Registro extends StatefulWidget {
+class SignIn extends StatefulWidget {
   @override
-  _RegistroState createState() => _RegistroState();
+  _SignInState createState() => _SignInState();
 }
 
-class _RegistroState extends State<Registro> {
+class _SignInState extends State<SignIn> {
   String email = "";
   String password = "";
 
-  _signInWithEmailAndPassword() async {
-    if (email.isEmpty || password.isEmpty) return;
-
-    AuthResult authResult = await _auth.signInWithEmailAndPassword(
-        email: email, password: password);
-
-    print("Loged In ${authResult.user.uid}");
-
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (BuildContext context) {
-          return Home(user: authResult.user);
-        },
-      ),
-    );
-  }
+  UserBloc userBloc;
+  FirebaseUser user;
 
   _handleSignIn() async {
     FirebaseUser user = await _auth.currentUser();
-
     if (user != null) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
@@ -48,28 +33,7 @@ class _RegistroState extends State<Registro> {
     }
   }
 
-  _signInWithGoogle() async {
-    final GoogleSignInAccount googleUser = await _googleSignIn.signIn();
-    final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
-
-    final AuthCredential credential = GoogleAuthProvider.getCredential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-
-    final FirebaseUser user =
-        (await _auth.signInWithCredential(credential)).user;
-    print("signed in " + user.displayName);
-    // return user;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (BuildContext context) {
-          return Home(user: user);
-        },
-      ),
-    );
-  }
+  
 
   @override
   void initState() {
@@ -79,6 +43,7 @@ class _RegistroState extends State<Registro> {
 
   @override
   Widget build(BuildContext context) {
+    userBloc = BlocProvider.of(context);
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -164,7 +129,46 @@ class _RegistroState extends State<Registro> {
               crearBoton(
                 "SIGN IN",
                 Theme.of(context).primaryColor,
-                _signInWithEmailAndPassword,
+                () async {
+                  if (email.isEmpty || password.isEmpty) return;
+                  try{
+                    user = await userBloc.signInWithEmailAndPassword(email, password);
+                  }catch(error){
+                    switch(error.code){
+                      case "ERROR_INVALID_EMAIL": { 
+                        mensajeError("Correo incorrecto", "Verifica el correo ingresado");
+                      } 
+                      break;
+                      case "ERROR_USER_DISABLED": {
+                        mensajeError("Su cuenta está suspendida", "Para más detalles comunícate al correo letstudy.app@gmail.com para poder brindarte más información");  
+                      } 
+                      break;
+                      case "ERROR_USER_NOT_FOUND": { 
+                        mensajeError("Usuario no registrado", "Crea una cuenta para poder ingresar");
+                      } 
+                      break;
+                      case "ERROR_WRONG_PASSWORD": { 
+                        mensajeError("Contraseña incorrecta", "Vuelve a intentarlo o cambia tu contraseña");
+                      } 
+                      break;
+                      case "ERROR_NETWORK_REQUEST_FAILED": { 
+                        mensajeError("Error de conexión", "Verifica si estás conectado a internet o si la conexión es inestable. Luego vuelve a intentarlo");
+                      }
+                      break;
+                      default: { 
+                        mensajeError("Error desconocido", "Vuelve a intentarlo más tarde");
+                      }
+                      break;  
+                    }
+                  }
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (BuildContext context) {
+                        return Home(user: user);
+                      },
+                    ),
+                  );
+                },
               ),
               Container(
                 margin: EdgeInsets.only(top: 20),
@@ -176,7 +180,16 @@ class _RegistroState extends State<Registro> {
                 ),
               ),
               crearBoton(
-                  "LOGIN WITH GOOGLE", Colors.red[400], _signInWithGoogle),
+                  "LOGIN WITH GOOGLE", Colors.red[400], () async {
+                    user = await userBloc.signInWithGoogle();
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) {
+                          return Home(user: user);
+                        },
+                      ),
+                    );
+                  }),
               Center(
                 child: Container(
                   margin: EdgeInsets.only(top: 20),
@@ -234,6 +247,40 @@ class _RegistroState extends State<Registro> {
           ),
         ),
       ),
+    );
+  }
+  Future<void> mensajeError(String titulo, String contenido) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context){
+        return SimpleDialog(
+          elevation: 30.0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0)
+          ),
+          title: Text(titulo, textAlign: TextAlign.center),
+          contentPadding: EdgeInsets.symmetric(horizontal: 20.0,vertical: 20.0),
+          children: <Widget>[
+            Container(
+              margin: EdgeInsets.only(bottom: 10),
+              child: Text(
+                contenido,
+                style: TextStyle(
+                  fontSize: 14
+                ),
+              ),
+            ),
+            crearBoton(
+              "Continuar",
+              Colors.blue,
+              (){
+                Navigator.pop(context);
+              }
+            )
+          ]
+        );
+      }
     );
   }
 }

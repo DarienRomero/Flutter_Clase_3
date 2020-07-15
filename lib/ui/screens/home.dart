@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'registro.dart';
+import 'sign_in.dart';
 
 final FirebaseAuth _auth = FirebaseAuth.instance;
 
 class Home extends StatefulWidget {
-  const Home({Key key, @required this.user}) : super(key: key);
+  const Home({
+    Key key, 
+    @required this.user
+  }) : super(key: key);
 
   final FirebaseUser user;
 
@@ -21,7 +24,7 @@ class _HomeState extends State<Home> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (BuildContext context) {
-          return Registro();
+          return SignIn();
         },
       ),
     );

@@ -1,9 +1,8 @@
+import 'package:clase3/bloc/bloc_user.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:generic_bloc_provider/generic_bloc_provider.dart';
 import 'home.dart';
-
-final FirebaseAuth _auth = FirebaseAuth.instance;
 
 class SignUp extends StatefulWidget {
   @override
@@ -11,39 +10,19 @@ class SignUp extends StatefulWidget {
 }
 
 class _SignUpState extends State<SignUp> {
+  
   final formKey = GlobalKey<FormState>();
 
   String username = "";
   String email = "";
   String password = "";
 
-  _createUserWithEmailAndPassword() async {
-    // if (username.isEmpty || email.isEmpty || password.isEmpty) return;
-    if (!formKey.currentState.validate()) return;
-
-    AuthResult authResult = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    UserUpdateInfo userInfo = UserUpdateInfo();
-    userInfo.displayName = username;
-
-    await authResult.user.updateProfile(userInfo);
-
-    await authResult.user.reload();
-
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (BuildContext context) {
-          return Home(user: authResult.user);
-        },
-      ),
-    );
-  }
+  UserBloc userBloc;
+  FirebaseUser user;
 
   @override
   Widget build(BuildContext context) {
+    userBloc = BlocProvider.of(context);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -135,7 +114,16 @@ class _SignUpState extends State<SignUp> {
               crearBoton(
                 "SIGN UP",
                 Theme.of(context).primaryColor,
-                _createUserWithEmailAndPassword,
+                () async {
+                  user = await userBloc.createUserWithEmailAndPassword(username, email, password);
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (BuildContext context) {
+                        return Home(user: user);
+                      },
+                    ),
+                  );
+                },
               ),
               Container(
                 margin: EdgeInsets.only(top: 20),
